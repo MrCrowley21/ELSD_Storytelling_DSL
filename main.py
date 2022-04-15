@@ -12,6 +12,6 @@ interpreter = Interpreter(parser)
 # print the tokens
 # print(lexer.lexer_tokens)
 # print parser
-print(parser.get_parsed())
+# print(parser.get_parsed())
 interpreter.interpret_parse()
 

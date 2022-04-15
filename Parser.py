@@ -116,7 +116,7 @@ class Parser:
         if expression is None:
             raise SyntaxError(f'Operand is not defined')
         while self.next_token.value != NEWLINE and self.next_token.value != COLON \
-                and precedent <= get_precedence(self.next_token):
+                and PRIORITY.index(precedent) <= PRIORITY.index(get_precedence(self.next_token)):
             if new_expression := self.__parse_normal_expression(expression):
                 expression = new_expression
             else:
