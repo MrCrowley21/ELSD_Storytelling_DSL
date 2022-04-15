@@ -1,0 +1,10 @@
+5 + 6 * 4
+2 - 3
+int a = 5
+2 * (-2 - 4)
+a = 4 + 3
+int b
+FROM node_1 TO node_2 ACTION:"I did it"
+if a == 4:
+    b = false
+a = 4
