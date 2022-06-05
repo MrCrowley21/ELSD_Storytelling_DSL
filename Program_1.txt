@@ -1,0 +1,9 @@
+int i
+STORY s:
+    SECTION sc1:
+        FROM n_1 TO n_2 ACTION: "act"
+    SECTION sc2:
+        FROM s.sc1.n_2 TO n_3
+i = nr_nodes(s.sc2)
+if i > 0:
+    color(s.sc2, "y")

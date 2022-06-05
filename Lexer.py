@@ -81,7 +81,7 @@ class Lexer:
         # finds the close of the '"'
         end = self.line.find('"', self.position + 1)
         if end != -1:
-            self.lexer_tokens.append(Token(STRING, self.line[self.position: end + 1]))
+            self.lexer_tokens.append(Token(STRING, self.line[self.position + 1: end]))
             self.position = end + 1
         # rise error in case of no paired '"'
         else:
@@ -89,7 +89,7 @@ class Lexer:
 
     # iterate through a number candidate
     def __iterateNumber(self):
-        while '0' <= self.line[self.position] <= '9':
+        while self.position < len(self.line) and '0' <= self.line[self.position] <= '9':
             self.position += 1
 
     # check a token is a number
@@ -100,7 +100,9 @@ class Lexer:
         self.__iterateNumber()
         check_type = self.checkFloat(check_type)
         # raise error in case of unacceptable characters
-        if self.line[self.position] not in self.delimiters and self.line[self.position] not in self.operators:
+        if self.position < len(self.line) and self.line[self.position] not in self.delimiters and \
+                self.line[self.position] not in self.operators:
+            print(ord(self.line[self.position]))
             raise IllegalNameError(self.line[start: self.position])
         elif check_type:
             token_type = INTEGER
@@ -109,7 +111,7 @@ class Lexer:
 
     # check if a number is float
     def checkFloat(self, check_type):
-        if self.line[self.position] == '.':
+        if len(self.line) < self.position and self.line[self.position] == '.':
             check_type = not check_type
             self.position += 1
             self.__iterateNumber()
@@ -166,8 +168,9 @@ class Lexer:
 
     # iterates till fit the identifier definition
     def __iterateWord(self):
-        while '0' <= self.line[self.position] <= '9' or 'a' <= self.line[self.position] <= 'z' \
-                or 'A' <= self.line[self.position] <= 'Z' or self.line[self.position] == '_':
+        while self.position < len(self.line) and ('0' <= self.line[self.position] <= '9'
+                or 'a' <= self.line[self.position] <= 'z'
+                or 'A' <= self.line[self.position] <= 'Z' or self.line[self.position] == '_'):
             self.position += 1
 
     def __getWord(self):
@@ -182,7 +185,8 @@ class Lexer:
         # define the word
         word = self.line[start: self.position]
         # check if non-valid characters
-        if self.line[self.position] not in self.delimiters and self.line[self.position] not in self.operators:
+        if self.position < len(self.line) and self.line[self.position] not in self.delimiters \
+                and self.line[self.position] not in self.operators:
             IdentifierError(word)
         # check if a bool value
         elif word == 'true' or word == 'false':
@@ -211,8 +215,7 @@ class Lexer:
         # get the next word
         word = self.__getNextType()
         # check if it bool
-        if word == 'true' or word == 'false' or [i for i in KEYWORDS if word in i] or \
-                [i for i in METHODS if word in i]:
+        if word == 'true' or word == 'false' or [i for i in KEYWORDS if word in i]:
             raise IdentifierError(word)
 
     def __getNextType(self):
@@ -220,10 +223,13 @@ class Lexer:
         next_word = ""
         start = self.position
         # analyze only valid cases (keyword <' '> identifier)
-        if self.line[self.position] == ' ' and self.line[self.position + 1] != '\n':
-            self.position += 1
-            # iterate to obtain the next word
-            self.__iterateWord()
-            next_word = self.line[start + 1:self.position]
-            self.position = start
+        try:
+            if self.line[self.position] == ' ' and self.line[self.position + 1] != '\n':
+                self.position += 1
+                # iterate to obtain the next word
+                self.__iterateWord()
+                next_word = self.line[start + 1:self.position]
+                self.position = start
+        except IndexError:
+            next_word = ''
         return next_word

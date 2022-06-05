@@ -2,9 +2,42 @@
 2 - 3
 int a = 5
 2 * (-2 - 4)
-a = 4 + 3
+a = 4 + 2
 int b
-FROM node_1 TO node_2 ACTION:"I did it"
-if a == 4:
-    b = false
-a = 4
+FROM node_1 TO node_2 ACTION: "I did it"
+if a == 7:
+    b = 5
+else:
+    b = 4
+while a == 6:
+    b = 5
+    int c = 6
+    a = 5
+    if c == 6:
+        a = a - 1
+        c = c - 4
+    else:
+        while c > 4:
+            c = c - 1
+        c = 7
+bool d = false
+STAGE new_stage:
+    FROM node_1 TO my_node
+STORY my_story:
+    STAGE my_section:
+        FROM new_stage.node_1 TO node_3
+        FROM node_1 TO new_node ACTION: "Finally"
+        SECTION my_stage:
+            FROM my_story.my_section.node_3 TO new_node ACTION: "why not?"
+            FROM my_node TO your_node ACTION: "our"
+            FROM node_2 TO my_story.my_section.new_node
+        SECTION section_2:
+            FROM my_story.my_section.node_3 TO node
+            FROM node TO your_node
+            FROM node TO my_story.my_section.new_node
+        FROM my_node TO new_stage.my_node
+        FROM node_1 TO your_node
+a = nr_sections(my_story)
+color(my_story.my_section, "red")
+color(my_story.my_section.my_stage, "#92BBD9")
+color(my_story.my_section.section_2, "#CCD992")

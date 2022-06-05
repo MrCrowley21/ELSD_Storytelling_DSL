@@ -1,0 +1,24 @@
+int i = 0
+STORY my_story:
+    STAGE first_stage:
+        SECTION section_1:
+            FROM node_1 TO node_2
+            FROM node_1 TO node_3 ACTION: "doing something"
+        SECTION section_2:
+            FROM my_story.first_stage.section_1.node_2 TO node_4 ACTION: "doing something else"
+            FROM node_4 TO node_5
+            FROM node_2 TO node_4
+    STAGE second_stage:
+        SECTION section_3:
+            FROM my_story.first_stage.section_2.node_5 TO node_1 ACTION: "moving to another section"
+            FROM node_2 TO my_story.first_stage.section_1.node_3 ACTION: "still here"
+string node_color = "#"
+int k = nr_nodes(my_story.first_stage.section_2)
+
+while i < nr_nodes(my_story.first_stage.section_2):
+    i = i + 1
+    k = k + i
+if nr_nodes(my_story.first_stage.section_2) > 2:
+    color(my_story.first_stage.section_2, k + 1)
+    color(my_story.first_stage.section_1, nr_nodes(my_story.first_stage.section_1))
+    color(my_story.first_stage.section_1.node_1, "#D99298")

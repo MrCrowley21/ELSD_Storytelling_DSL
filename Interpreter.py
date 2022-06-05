@@ -10,5 +10,7 @@ class Interpreter:
 
     def interpret_parse(self):
         for p in self.parsed:
-            k = p.eval()
-            print(k)
+            # evaluate entities passed by parser
+            p.eval()
+        # show the graphical representation of the described flow
+        return GraphRepresentation()

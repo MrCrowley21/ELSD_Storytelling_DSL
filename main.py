@@ -3,7 +3,11 @@ from Parser import *
 from Interpreter import *
 
 # read the program from file and split in lines
-program = open('Parser_tester.txt', 'r')
+# program = open('Parser_tester.txt', 'r')
+program = open('Program_1.txt', 'r')
+# program = open('Program_2.txt', 'r')
+# program = open('Program_3.txt', 'r')
+
 lines = program.readlines()
 
 lexer = Lexer(lines)

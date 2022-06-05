@@ -66,8 +66,6 @@ METHODS = [
     ('NR_NODES', 'nr_nodes'),
     ('NR_SECTIONS', 'nr_sections'),
     ('NR_STAGES', 'nr_stages'),
-    ('WIDTH', 'width'),
-    ('NR_OF_INTERACTIONS', 'nr_of_interactions'),
     ('COLOR', 'color'),
     ('STYLE', 'style'),
 ]

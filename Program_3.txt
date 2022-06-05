@@ -1,0 +1,16 @@
+STORY my_story:
+    STAGE first_stage:
+        SECTION introduction:
+            FROM home TO uni
+            FROM home TO work ACTION: "doing something"
+        SECTION culmination:
+            FROM my_story.first_stage.introduction.uni TO party
+            FROM party TO police
+            FROM party TO my_story.first_stage.introduction.work
+    STAGE second_stage:
+        SECTION conclusion:
+            FROM my_story.first_stage.culmination.party TO headache
+        SECTION ending:
+            FROM new_day TO my_story.second_stage.conclusion.headache
+            FROM new_day TO pain
+            FROM new_day TO uni ACTION: "Act"
