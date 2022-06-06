@@ -69,23 +69,25 @@ class Lexer:
             self.tab += 4
             token_type = 'TAB'
             # append token to the list of tokens
-            self.lexer_tokens.append(Token(token_type, token))
+            self.lexer_tokens.append(Token(token_type,
+                                           self.program_text.index(self.line) + 1, token))
             self.__get_indentation()
         elif len(token) == 0:
             self.__getTokenType()
         else:
-            raise mySyntaxError(' ')
+            raise MySyntaxError(self.program_text.index(self.line) + 1, 'Indention expected')
 
     # extracts the string type of token
     def __getString(self):
         # finds the close of the '"'
         end = self.line.find('"', self.position + 1)
         if end != -1:
-            self.lexer_tokens.append(Token(STRING, self.line[self.position + 1: end]))
+            self.lexer_tokens.append(Token(STRING,
+                                           self.program_text.index(self.line) + 1, self.line[self.position + 1: end]))
             self.position = end + 1
         # rise error in case of no paired '"'
         else:
-            raise mySyntaxError('\'"\'')
+            raise MySyntaxError(self.program_text.index(self.line) + 1, '\'"\' expected')
 
     # iterate through a number candidate
     def __iterateNumber(self):
@@ -103,11 +105,12 @@ class Lexer:
         if self.position < len(self.line) and self.line[self.position] not in self.delimiters and \
                 self.line[self.position] not in self.operators:
             print(ord(self.line[self.position]))
-            raise IllegalNameError(self.line[start: self.position])
+            raise IllegalNameError(self.program_text.index(self.line) + 1, self.line[start: self.position])
         elif check_type:
             token_type = INTEGER
         # append value to the list of tokens
-        self.lexer_tokens.append(Token(token_type, self.line[start: self.position]))
+        self.lexer_tokens.append(Token(token_type,
+                                       self.program_text.index(self.line) + 1, self.line[start: self.position]))
 
     # check if a number is float
     def checkFloat(self, check_type):
@@ -142,7 +145,7 @@ class Lexer:
         elif token == NEWLINE:
             token_type = 'NEWLINE'
         # append token to the list of tokens
-        self.lexer_tokens.append(Token(token_type, token))
+        self.lexer_tokens.append(Token(token_type, self.program_text.index(self.line) + 1, token))
         # increment value
         self.position += 1
 
@@ -155,15 +158,15 @@ class Lexer:
         # check if composed operator
         if [i for i in OPERATORS if word in i]:
             token_type = ''.join([i[0] for i in OPERATORS if word in i])
-            self.lexer_tokens.append(Token(token_type, word))
+            self.lexer_tokens.append(Token(token_type, self.program_text.index(self.line) + 1, word))
             self.position += 2
         #  check if one of the operators are not valid apart and raise error it yes
         elif [i for i in OPERATORS if self.next_type[1] in i] or not [i for i in OPERATORS if token in i]:
-            raise mySyntaxError(f'\'{token}\'')
+            raise MySyntaxError(self.program_text.index(self.line) + 1, f'\'{token}\' expected')
         # add the current valid character and increment the position
         else:
             token_type = ''.join([i[0] for i in OPERATORS if token in i])
-            self.lexer_tokens.append(Token(token_type, token))
+            self.lexer_tokens.append(Token(token_type, self.program_text.index(self.line) + 1, token))
             self.position += 1
 
     # iterates till fit the identifier definition
@@ -179,7 +182,7 @@ class Lexer:
         token_type = ""
         # check start symbol of the token
         if token != '_' and (token < 'A' or 'Z' < token < 'a' or token > 'z'):
-            raise IllegalNameError(self.line[self.position])
+            raise IllegalNameError(self.program_text.index(self.line) + 1, self.line[self.position])
         # iterate through word
         self.__iterateWord()
         # define the word
@@ -187,7 +190,7 @@ class Lexer:
         # check if non-valid characters
         if self.position < len(self.line) and self.line[self.position] not in self.delimiters \
                 and self.line[self.position] not in self.operators:
-            IdentifierError(word)
+            IdentifierError(self.program_text.index(self.line) + 1, word)
         # check if a bool value
         elif word == 'true' or word == 'false':
             token_type = BOOLEAN
@@ -208,7 +211,7 @@ class Lexer:
         # assign the remained type if not any from above
         else:
             token_type = IDENTIFIER
-        self.lexer_tokens.append(Token(token_type, word))
+        self.lexer_tokens.append(Token(token_type, self.program_text.index(self.line) + 1, word))
 
     # checks if the the following word is a keyword or in built function
     def __checkIdentifier(self):
@@ -216,7 +219,7 @@ class Lexer:
         word = self.__getNextType()
         # check if it bool
         if word == 'true' or word == 'false' or [i for i in KEYWORDS if word in i]:
-            raise IdentifierError(word)
+            raise IdentifierError(self.program_text.index(self.line) + 1, word)
 
     def __getNextType(self):
         # initiate with empty

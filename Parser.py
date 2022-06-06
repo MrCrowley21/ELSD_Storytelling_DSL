@@ -25,10 +25,13 @@ class Parser:
             if self.next_token != self.current_token:
                 self.next_token = self.next_token
             else:
-                self.next_token = Token('EOF', 'EOF')
+                self.next_token = Token('EOF', 0, 'EOF')
 
     # check if reach end of file
     def __next__(self) -> Statement:
+        while self.current_token.token_type == NEWLINE \
+                and self.next_token.token_type == NEWLINE:
+            self.__update()
         while self.current_token.token_type != 'EOF':
             if statement := self.__parse_statement():
                 self.parser.append(statement)
@@ -38,7 +41,7 @@ class Parser:
     # check if the type of the following character corresponds to the given one
     def __get_next_type(self, token_type):
         if self.next_token.token_type != token_type:
-            raise AssertionError(f'expected type {token_type}. Got type {self.next_token.token_type}')
+            raise MyTypeError(self.current_token.line, token_type, self.next_token.token_type)
         self.__update()
 
     # parse a statement (logical construction)
@@ -83,7 +86,7 @@ class Parser:
             else:
                 self.__get_next_type('NEWLINE')
             self.__update()
-            return VariableDeclarationStatement(variable_type, variable, value)
+            return VariableDeclarationStatement(self.current_token.line, variable_type, variable, value)
 
     # parse the references before the name
     def __parse_node_reference(self):
@@ -91,12 +94,12 @@ class Parser:
             reference = self.current_token.value
             self.__update()
             self.__update()
-            return NodeReference(reference)
+            return NodeReference(self.current_token.line, reference)
 
     # parse the identifier
     def __parse_identifier(self):
         if self.current_token.token_type == IDENTIFIER:
-            return Identifier(self.current_token.value)
+            return Identifier(self.current_token.line, self.current_token.value)
 
     # parse the assignment to a variable
     def __parse_assign_statement(self) -> Statement:
@@ -110,7 +113,7 @@ class Parser:
             else:
                 self.__get_next_type('NEWLINE')
                 self.__update()
-            return AssignStatement(variable, value)
+            return AssignStatement(self.current_token.line, variable, value)
 
     # helping functions: parse the number of tabs to know if block statement is currently defined
     def __parse_tabs(self):
@@ -131,7 +134,7 @@ class Parser:
                 statement = self.__parse_statement()
                 block.append(statement)
             if self.tab_number > block_tab_number:
-                raise SyntaxError(f'Indentation required')
+                raise MySyntaxError(self.current_token.line, "Indentation required")
         return BlockStatement(block)
 
     # parse the block statement for the story frame
@@ -148,9 +151,9 @@ class Parser:
                                 self.__parse_stage_expression()
                     block.append(statement)
                 else:
-                    raise SyntaxError('Not a flow description')
+                    raise MySyntaxError(self.current_token.line, 'Not a flow description')
             if self.tab_number > block_tab_number:
-                raise SyntaxError(f'Indentation required')
+                raise MySyntaxError(self.current_token.line, 'Too much indented text')
         return BlockStatement(block)
 
     # parse the block statement for the section frame
@@ -165,9 +168,9 @@ class Parser:
                     statement = self.__parse_node_expression()
                     block.append(statement)
                 else:
-                    raise SyntaxError('Not a flow description')
+                    raise MySyntaxError(self.current_token.line, 'Not a flow description')
             if self.tab_number > block_tab_number:
-                raise SyntaxError(f'Indentation required')
+                raise MySyntaxError(self.current_token.line, 'Too much indented text')
         return BlockStatement(block)
 
     # parse the block statement for the stage frame
@@ -183,9 +186,9 @@ class Parser:
                                 self.__parse_section_expression()
                     block.append(statement)
                 else:
-                    raise SyntaxError('Not a flow description')
+                    raise MySyntaxError(self.current_token.line, 'Not a flow description')
             if self.tab_number > block_tab_number:
-                raise SyntaxError(f'Indentation required')
+                raise MySyntaxError(self.current_token.line, 'Too much indented text')
         return BlockStatement(block)
 
     # parse any type of expression
@@ -200,7 +203,7 @@ class Parser:
                      self.__parse_unary() or \
                      self.__parse_group()
         if expression is None:
-            raise SyntaxError(f'Operand is not defined')
+            raise MySyntaxError(self.current_token.line, 'Operand is not defined')
         while self.next_token.value != NEWLINE and self.next_token.value != COLON \
                 and self.current_token.value != 'EOF' and self.next_token.value != 'EOF' \
                 and PRIORITY.index(precedent) <= PRIORITY.index(get_precedence(self.next_token)):
@@ -219,7 +222,7 @@ class Parser:
             BOOLEAN,
         ]
         if self.current_token.token_type in datatypes:
-            return Literal(self.current_token.token_type, self.current_token.value)
+            return Literal(self.current_token.line, self.current_token.token_type, self.current_token.value)
 
     # parse expressions with two operands
     def __parse_normal_expression(self, left: Expression) -> Expression:
@@ -242,7 +245,7 @@ class Parser:
             precedent = get_precedence(self.current_token)
             self.__update()
             right = self.__parse_expression(precedent)
-            return NormalExpression(left, operator, right)
+            return NormalExpression(self.current_token.line, left, operator, right)
 
     # parse the story frame declaration
     def __parse_story_expression(self) -> Expression:
@@ -253,8 +256,10 @@ class Parser:
             self.__get_next_type('COLON')
             self.__get_next_type('NEWLINE')
             self.__update()
+            if self.current_token.token_type != 'TAB':
+                raise MySyntaxError(self.current_token.line, 'Indentation required')
             flow = self.__parse_block_story_statement()
-            return FlowFrame(frame_type, name, flow)
+            return FlowFrame(self.current_token.line, frame_type, name, flow)
 
     # parse the section frame declaration
     def __parse_section_expression(self) -> Expression:
@@ -265,8 +270,10 @@ class Parser:
             self.__get_next_type('COLON')
             self.__get_next_type('NEWLINE')
             self.__update()
+            if self.current_token.token_type != 'TAB':
+                raise MySyntaxError(self.current_token.line, 'Indentation required')
             flow = self.__parse_block_section_statement()
-            return FlowFrame(frame_type, name, flow)
+            return FlowFrame(self.current_token.line, frame_type, name, flow)
 
     # parse the stage frame declaration
     def __parse_stage_expression(self) -> Expression:
@@ -277,8 +284,10 @@ class Parser:
             self.__get_next_type('COLON')
             self.__get_next_type('NEWLINE')
             self.__update()
+            if self.current_token.token_type != 'TAB':
+                raise MySyntaxError(self.current_token.line, 'Indentation required')
             flow = self.__parse_block_stage_statement()
-            return FlowFrame(frame_type, name, flow)
+            return FlowFrame(self.current_token.line, frame_type, name, flow)
 
     # parse if statements
     def __parse_if_expression(self) -> Expression:
@@ -289,6 +298,8 @@ class Parser:
             self.__get_next_type('COLON')
             self.__get_next_type('NEWLINE')
             self.__update()
+            if self.current_token.token_type != 'TAB':
+                raise MySyntaxError(self.current_token.line, 'Indentation required')
             if_condition = self.__parse_block_statement()
             if_not_condition = None
             if self.current_token.token_type == 'TAB':
@@ -309,6 +320,8 @@ class Parser:
             self.__get_next_type('COLON')
             self.__get_next_type('NEWLINE')
             self.__update()
+            if self.current_token.token_type != 'TAB':
+                raise MySyntaxError(self.current_token.line, 'Indentation required')
             block = self.__parse_block_statement()
             return WhileStatement(condition, block)
 
@@ -334,7 +347,8 @@ class Parser:
                 action = self.current_token.value
             self.__update()
             self.__update()
-            return NodesExpression(from_node, from_node_reference, to_node, to_node_reference, action)
+            return NodesExpression(self.current_token.line, from_node, from_node_reference,
+                                   to_node, to_node_reference, action)
 
     # parse the method "nr_nodes()"
     def __parse_nr_nodes_method(self) -> Expression:
@@ -346,7 +360,7 @@ class Parser:
                 reference += [self.__parse_node_reference()]
             variable = self.__parse_identifier()
             self.__get_next_type('RPARAN')
-            return NrNodeMethod(reference, variable)
+            return NrNodeMethod(self.current_token.line, reference, variable)
 
     # parse the method "nr_sections()"
     def __parse_nr_sections_method(self) -> Expression:
@@ -358,7 +372,7 @@ class Parser:
                 reference += [self.__parse_node_reference()]
             variable = self.__parse_identifier()
             self.__get_next_type('RPARAN')
-            return NrSectionMethod(reference, variable)
+            return NrSectionMethod(self.current_token.line, reference, variable)
 
     # parse the method "nr_stages()"
     def __parse_nr_stages_method(self) -> Expression:
@@ -370,7 +384,7 @@ class Parser:
                 reference += [self.__parse_node_reference()]
             variable = self.__parse_identifier()
             self.__get_next_type('RPARAN')
-            return NrStageMethod(reference, variable)
+            return NrStageMethod(self.current_token.line, reference, variable)
 
     # parse the method "color()"
     def __parse_color_method(self) -> Expression:
@@ -385,7 +399,7 @@ class Parser:
             self.__update()
             color = self.__parse_expression(PRIORITY[0])
             self.__get_next_type('RPARAN')
-            return ColorMethod(reference, variable, color)
+            return ColorMethod(self.current_token.line, reference, variable, color)
 
     # parse the negative negations and opposite of a number
     def __parse_unary(self):
@@ -394,7 +408,7 @@ class Parser:
             precedent = get_precedence(self.current_token)
             self.__update()
             right = self.__parse_expression(PRIORITY[4])
-            return PrefixExpression(operator, right)
+            return PrefixExpression(self.current_token.line, operator, right)
         elif self.current_token.token_type == 'LPARAN':
             self.__update()
             expression = self.__parse_expression(PRIORITY[0])

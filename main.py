@@ -9,6 +9,7 @@ program = open('Program_1.txt', 'r')
 # program = open('Program_3.txt', 'r')
 
 lines = program.readlines()
+program.close()
 
 lexer = Lexer(lines)
 parser = Parser(lexer)
@@ -18,4 +19,3 @@ interpreter = Interpreter(parser)
 # print parser
 # print(parser.get_parsed())
 interpreter.interpret_parse()
-

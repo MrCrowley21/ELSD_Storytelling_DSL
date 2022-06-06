@@ -106,9 +106,10 @@ def get_precedence(token) -> PRIORITY:
 
 
 class Token:
-    def __init__(self, token_type, value=None):
+    def __init__(self, token_type, line, value=None):
         self.token_type = token_type
         self.value = value
+        self.line = line
 
     # specifies output format of tokens
     def __repr__(self):

@@ -42,7 +42,8 @@ colors = ['white', 'red', 'blue', 'yellow', 'green', 'black']  # default define 
 
 # describes literals
 class Literal(Expression):
-    def __init__(self, token_type: str, value: str):
+    def __init__(self, line, token_type: str, value: str):
+        self.line = line
         self.type = token_type
         self.value = value
 
@@ -68,13 +69,14 @@ class Literal(Expression):
         try:
             literal_type = self.__get_type()
         except ValueError:
-            raise ValueError(f'Error converting {self.value} to {self.type}')
+            raise ConvertingError(self.line, self.value, self.type)
         return literal_type
 
 
 # descries identifiers
 class Identifier(Expression):
-    def __init__(self, name):
+    def __init__(self, line, name):
+        self.line = line
         self.name = name
 
     def __repr__(self) -> str:
@@ -84,12 +86,13 @@ class Identifier(Expression):
         if self.name in identifiers:
             return identifiers[self.name][0]
         else:
-            raise NameError(f'{self.name} is not defined')
+            raise IllegalNameError(self.line, self.name)
 
 
 # describes node references
 class NodeReference(Expression):
-    def __init__(self, reference):
+    def __init__(self, line, reference):
+        self.line = line
         self.reference = reference
 
     def __repr__(self) -> str:
@@ -99,12 +102,13 @@ class NodeReference(Expression):
         if self.reference in identifiers:
             return identifiers[self.reference][0]
         else:
-            raise NameError(f'{self.name} is not defined')
+            raise IllegalNameError(self.line, self.reference)
 
 
 # describes variable declaration statements
 class VariableDeclarationStatement(Statement):
-    def __init__(self, variable_type: str, name: Identifier, value: Expression):
+    def __init__(self, line, variable_type: str, name: Identifier, value: Expression):
+        self.line = line
         self.variable_type = variable_type
         self.name = name
         self.value = value
@@ -113,18 +117,22 @@ class VariableDeclarationStatement(Statement):
         return f'({self.variable_type} {self.name} {self.value})'
 
     def eval(self):
-        if self.name in identifiers or self.name in frame_names or str(self.name) in methods:
-            raise NameError(f'"{self.name}" is already defined')
-        if self.value is not None:
-            identifiers[self.name] = [self.value.eval(), self.variable_type]
-        else:
-            identifiers[self.name] = [None, self.variable_type]
+        try:
+            if self.name in identifiers or self.name in frame_names or str(self.name) in methods:
+                raise InitiationError(self.line, self.name)
+            if self.value is not None:
+                identifiers[self.name] = [self.value.eval(), self.variable_type]
+            else:
+                identifiers[self.name] = [None, self.variable_type]
+        except KeyError:
+            raise MySyntaxError(self.line, 'Not a valid attribution for variable')
 
 
 # describes flow description
 class NodesExpression(Statement):
-    def __init__(self, from_node: Identifier, from_node_reference,
+    def __init__(self, line, from_node: Identifier, from_node_reference,
                  to_node: Identifier, to_node_reference, action: str):
+        self.line = line
         self.from_node = str(from_node)
         self.to_node = str(to_node)
         self.action = action
@@ -151,7 +159,7 @@ class NodesExpression(Statement):
             i += 1
         if node not in reference[0]:
             if str(node_reference[-1]) + '.' + str(node) not in reference[0]:
-                raise SyntaxError('Not a valid node')
+                raise MySyntaxError(self.line, 'Not a valid node')
             else:
                 node = str(node_reference[-1]) + '.' + str(node)
         return node
@@ -166,13 +174,13 @@ class NodesExpression(Statement):
                 else:
                     node = str(current_frame[0]) + '.' + str(node)
             except KeyError:
-                raise KeyError('Not a valid path')
+                raise ReferencesError(self.line)
         elif len(node_reference) > 0 and self.__check_node(possible_names, node_list) and \
                 not self.__check_node([str(node), str(node_reference[-1]) + '.' + str(node)], current_dictionary[0]):
             try:
                 node = self.__define_node_reference(node, node_reference, reference)
             except KeyError:
-                raise ValueError('Not a valid path')
+                raise ReferencesError(self.line)
         elif self.__check_node([str(node), str(current_frame[0]) + '.' + str(node)], current_dictionary[0]):
             if node not in current_dictionary[0]:
                 node = str(current_frame[0]) + '.' + str(node)
@@ -202,7 +210,7 @@ class NodesExpression(Statement):
             color_map.append('white')
         # check the path not to be already described
         if self.from_node in current_dictionary[0] and self.to_node in current_dictionary[0][self.from_node]:
-            raise SyntaxError(f'This path is already described')
+            raise MySyntaxError(self.line, 'This path is already described')
         # do not append node to the current frame if belongs to another frame
         elif len(self.from_node_reference) != 0:
             G.add_edge(self.from_node, self.to_node)
@@ -224,7 +232,7 @@ class NodesExpression(Statement):
             color_map.append('white')
         # check the path not to be already described
         if self.to_node in current_dictionary[0] and self.from_node in current_dictionary[0][self.to_node]:
-            raise SyntaxError(f'This path is already described')
+            raise MySyntaxError(self.line, 'This path is already described')
         # do not append node to the current frame if belongs to another frame
         elif len(self.to_node_reference) != 0 and self.to_node not in node_list:
             pass
@@ -239,7 +247,8 @@ class NodesExpression(Statement):
 
 # describes variable assignment statement
 class AssignStatement(Statement):
-    def __init__(self, name: str, value: Expression):
+    def __init__(self, line, name: str, value: Expression):
+        self.line = line
         self.name = name
         self.value = value
 
@@ -255,14 +264,14 @@ class AssignStatement(Statement):
         }
 
         if self.name not in identifiers:
-            raise NameError(f' "{self.name}" is not defined')
+            raise IllegalNameError(self.line, self.name)
         result = self.value.eval()
         if (type(result) == type(True) or type(result) == type(False)) and identifiers[self.name][1] != 'bool':
-            raise ValueError(f'Error converting {result} to {identifiers[self.name][1]}')
+            raise ConvertingError(self.line, result, identifiers[self.name][1])
         elif isinstance(result, (instances[identifiers[self.name][1]])):
             identifiers[self.name][0] = result
         else:
-            raise ValueError(f'Error converting {result} to {identifiers[self.name][1]}')
+            raise ConvertingError(self.line, result, identifiers[self.name][1])
 
 
 # describes the block of more expressions/statements in a statement
@@ -283,7 +292,8 @@ class BlockStatement(Statement):
 
 # describes the block of statements that describes flows from the given frame
 class FlowFrame(Statement):
-    def __init__(self, frame_type, name, flow: BlockStatement):
+    def __init__(self, line, frame_type, name, flow: BlockStatement):
+        self.line = line
         self.frame_type = frame_type
         self.name = name
         self.flow = flow
@@ -311,7 +321,7 @@ class FlowFrame(Statement):
             current_frame[0] = prev_frame[0]
             frame_count[0] += 1
         else:
-            raise NameError(f'"{self.name}" is already defined')
+            raise InitiationError(self.line, self.name)
 
 
 # describes if statements
@@ -347,7 +357,8 @@ class WhileStatement(Statement):
 
 # describes "nr_nodes()" method
 class NrNodeMethod(Expression):
-    def __init__(self, reference, variable: Identifier):
+    def __init__(self, line, reference, variable: Identifier):
+        self.line = line
         self.reference = reference
         self.variable = variable
 
@@ -369,22 +380,23 @@ class NrNodeMethod(Expression):
         location = [nodes]
         if str(self.variable) in node_list or \
                 len(self.reference) > 0 and str(self.reference[-1]) + '.' + str(self.variable) in node_list:
-            raise SyntaxError('Argument must be of frame type')
+            raise MySyntaxError(self.line, 'Argument must be of frame type')
         try:
             for ref in self.reference:
                 location[0] = location[0][str(ref)]
         except KeyError:
-            raise KeyError('Not a valid reference')
+            raise ReferencesError(self.line)
         try:
             node_count = self.__count_nodes(location[0][str(self.variable)], 0)
         except KeyError:
-            raise KeyError('Not a valid reference')
+            raise ReferencesError(self.line)
         return node_count
 
 
 # describes "nr_sections()" method
 class NrSectionMethod(Expression):
-    def __init__(self, reference, variable: Identifier):
+    def __init__(self, line, reference, variable: Identifier):
+        self.line = line
         self.reference = reference
         self.variable = variable
 
@@ -405,22 +417,23 @@ class NrSectionMethod(Expression):
         section_count = 0
         location = [nodes]
         if str(self.variable) in section_list or str(self.variable) in node_list:
-            raise SyntaxError('Argument must be of type "STAGE" or "STORY"')
+            raise MySyntaxError(self.line, 'Argument must be of type "STAGE" or "STORY"')
         try:
             for ref in self.reference:
                 location[0] = location[0][str(ref)]
         except KeyError:
-            raise KeyError('Not a valid reference')
+            raise ReferencesError(self.line)
         try:
             section_count = self.__count_sections(location[0][str(self.variable)], 0)
         except KeyError:
-            raise KeyError('Not a valid reference')
+            raise ReferencesError(self.line)
         return section_count
 
 
 # describes "nr_stages()" method
 class NrStageMethod(Expression):
-    def __init__(self, reference, variable: Identifier):
+    def __init__(self, line, reference, variable: Identifier):
+        self.line = line
         self.reference = reference
         self.variable = variable
 
@@ -440,22 +453,23 @@ class NrStageMethod(Expression):
         stage_count = 0
         location = [nodes]
         if str(self.variable) in stage_list or str(self.variable) in section_list or str(self.variable) in node_list:
-            raise SyntaxError('Argument must be of type "STORY"')
+            raise MySyntaxError(self.line, 'Argument must be of type "STORY"')
         try:
             for ref in self.reference:
                 location[0] = location[0][str(ref)]
         except KeyError:
-            raise KeyError('Not a valid reference')
+            raise ReferencesError(self.line)
         try:
             stage_count = self.__count_stages(location[0][str(self.variable)], 0)
         except KeyError:
-            raise KeyError('Not a valid reference')
+            raise ReferencesError(self.line)
         return stage_count
 
 
 # describes "color()" method
 class ColorMethod(Expression):
-    def __init__(self, reference, variable: Identifier, color):
+    def __init__(self, line, reference, variable: Identifier, color):
+        self.line = line
         self.reference = reference
         self.variable = variable
         self.color = color
@@ -486,7 +500,7 @@ class ColorMethod(Expression):
             for ref in self.reference:
                 location[0] = location[0][str(ref)]
         except KeyError:
-            raise KeyError('Not a valid reference')
+            raise ReferencesError(self.line)
         if str(self.variable) not in location[0]:
             self.variable = str(self.reference[-1]) + '.' + str(self.variable)
         try:
@@ -496,12 +510,13 @@ class ColorMethod(Expression):
             else:
                 self.__color_node(location[0][str(self.variable)], graph_nodes, new_color)
         except KeyError:
-            raise KeyError('Not a valid reference')
+            raise ReferencesError(self.line)
 
 
 # describes negation or opposite number usage
 class PrefixExpression(Expression):
-    def __init__(self, operator: Statement, right: Expression):
+    def __init__(self, line, operator: Statement, right: Expression):
+        self.line = line
         self.operator = operator
         self.right = right
 
@@ -520,12 +535,13 @@ class PrefixExpression(Expression):
         try:
             return operator[self.operator](self.right.eval())
         except TypeError:
-            raise TypeError(f'Operator {self.operator} is not used in this scope')
+            raise MySyntaxError(self.line, f'Operator {self.operator} is not used in this scope')
 
 
 # describes expressions with two operands
 class NormalExpression(Expression):
-    def __init__(self, left: Expression, operator: Statement, right: Expression):
+    def __init__(self, line, left: Expression, operator: Statement, right: Expression):
+        self.line = line
         self.left = left
         self.right = right
         self.operator = operator
@@ -556,8 +572,8 @@ class NormalExpression(Expression):
         try:
             return operator[self.operator](self.left.eval(), self.right.eval())
         except TypeError:
-            raise TypeError(f'Cannot perform "{self.operator}" between '
-                            f'{identifiers[str(self.left)][1]} and {identifiers[str(self.right)][1]}')
+            raise MySyntaxError(self.line, f'Cannot perform "{self.operator}" between '
+                                           f'{identifiers[str(self.left)][1]} and {identifiers[str(self.right)][1]}')
 
 
 # describes the graph representation of the described flow
@@ -566,7 +582,7 @@ class GraphRepresentation:
         if is_directed_acyclic_graph(G):
             self.__drawGraph()
         else:
-            raise SyntaxError('There are cycles in your storytelling')
+            raise MySyntaxError(' ', 'There are cycles in your storytelling')
 
     # define the size of the node according to its name
     def __node_size(self, i):
