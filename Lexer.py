@@ -114,7 +114,7 @@ class Lexer:
 
     # check if a number is float
     def checkFloat(self, check_type):
-        if len(self.line) < self.position and self.line[self.position] == '.':
+        if len(self.line) > self.position and self.line[self.position] == '.':
             check_type = not check_type
             self.position += 1
             self.__iterateNumber()

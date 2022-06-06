@@ -117,11 +117,21 @@ class VariableDeclarationStatement(Statement):
         return f'({self.variable_type} {self.name} {self.value})'
 
     def eval(self):
+        instances = {
+            'int': int,
+            'bool': bool,
+            'float': float,
+            'string': str,
+        }
         try:
             if self.name in identifiers or self.name in frame_names or str(self.name) in methods:
                 raise InitiationError(self.line, self.name)
             if self.value is not None:
-                identifiers[self.name] = [self.value.eval(), self.variable_type]
+                result = self.value.eval()
+                if isinstance(result, (instances[self.variable_type])):
+                    identifiers[self.name] = [result, self.variable_type]
+                else:
+                    raise ConvertingError(self.line, self.name, self.variable_type)
             else:
                 identifiers[self.name] = [None, self.variable_type]
         except KeyError:
@@ -260,7 +270,7 @@ class AssignStatement(Statement):
             'int': int,
             'bool': bool,
             'float': float,
-            'string': str
+            'string': str,
         }
 
         if self.name not in identifiers:
@@ -493,6 +503,8 @@ class ColorMethod(Expression):
         new_color = ""
         if isinstance(color, int):
             new_color = colors[color % 6]
+        elif isinstance(color, float):
+            raise MySyntaxError(self.line, 'Expected argument of type int or string')
         else:
             new_color = color
         location = [nodes]
